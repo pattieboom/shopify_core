@@ -17,6 +17,8 @@ export class ShopifyRateLimiterDO {
 
 async fetch(req: Request): Promise<Response> {
   const url = new URL(req.url);
+console.log("DO URL:", req.url);
+console.log("DO PATH:", url.pathname);
 
   if (url.pathname === "/graphql") {
     const payload = await req.json();
