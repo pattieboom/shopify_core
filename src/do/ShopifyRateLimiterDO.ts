@@ -27,12 +27,12 @@ async fetch(req: Request): Promise<Response> {
     });
   }
 
-  if (url.pathname === "/backfill/auto") {
+  if (url.pathname === "/backfill") {
     const payload = await req.json();
     const result = await this.backfill(payload);
     return new Response(JSON.stringify(result));
   }
-
+console.log("DO PATH:", url.pathname);
   return new Response("Not found", { status: 404 });
 }
 
