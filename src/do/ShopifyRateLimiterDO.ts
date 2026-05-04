@@ -15,13 +15,10 @@ export class ShopifyRateLimiterDO {
   currentlyAvailable = 1000;
   restoreRate = 50;
 
-  async fetch(req: Request): Promise<Response> {
-    const url = new URL(req.url);
+async fetch(req: Request): Promise<Response> {
+  const url = new URL(req.url);
 
-    if (url.pathname !== "/graphql") {
-      return new Response("Not found", { status: 404 });
-    }
-
+  if (url.pathname === "/graphql") {
     const payload = await req.json();
 
     return new Promise<Response>((resolve, reject) => {
@@ -29,6 +26,15 @@ export class ShopifyRateLimiterDO {
       this.run();
     });
   }
+
+  if (url.pathname === "/backfill") {
+    const payload = await req.json();
+    const result = await this.backfill(payload);
+    return new Response(JSON.stringify(result));
+  }
+
+  return new Response("Not found", { status: 404 });
+}
 
   async run() {
     if (this.running) return;
