@@ -108,4 +108,51 @@ async fetch(req: Request): Promise<Response> {
       return json;
     }
   }
+async backfill(payload: any) {
+  const { shop, accessToken, startDate, endDate } = payload;
+
+  let cursor: string | null = null;
+  let total = 0;
+
+  while (true) {
+    const json = await this.handle({
+      shop,
+      accessToken,
+      query: `
+        query ($cursor: String) {
+          orders(
+            first: 50,
+            after: $cursor,
+            query: "created_at:>=${startDate} AND created_at:<=${endDate}"
+          ) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            edges {
+              node {
+                id
+              }
+            }
+          }
+        }
+      `,
+      variables: { cursor }
+    });
+
+    const edges = json?.data?.orders?.edges || [];
+
+    console.log("DO BACKFILL PAGE:", edges.length);
+
+    // voorlopig alleen tellen (geen DB logic hier)
+    total += edges.length;
+
+    if (!json?.data?.orders?.pageInfo?.hasNextPage) break;
+
+    cursor = json.data.orders.pageInfo.endCursor;
+  }
+
+  return { success: true, total };
+}
+
 }
