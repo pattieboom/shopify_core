@@ -22,6 +22,11 @@ declare class ShopifyRateLimiterDO {
     fetch(req: Request): Promise<Response>;
     run(): Promise<void>;
     handle(payload: any): Promise<any>;
+    backfill(payload: any): Promise<{
+        orders: any[];
+        nextCursor: any;
+        hasNextPage: any;
+    }>;
 }
 
 export { ShopifyRateLimiterDO, createShopifyClient };

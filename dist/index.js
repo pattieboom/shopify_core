@@ -36,14 +36,20 @@ var ShopifyRateLimiterDO = class {
   restoreRate = 50;
   async fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname !== "/graphql") {
-      return new Response("Not found", { status: 404 });
+    if (url.pathname === "/graphql") {
+      const payload = await req.json();
+      return new Promise((resolve, reject) => {
+        this.queue.push({ resolve, reject, payload });
+        this.run();
+      });
     }
-    const payload = await req.json();
-    return new Promise((resolve, reject) => {
-      this.queue.push({ resolve, reject, payload });
-      this.run();
-    });
+    if (url.pathname === "/backfill") {
+      const payload = await req.json();
+      const result = await this.backfill(payload);
+      return new Response(JSON.stringify(result));
+    }
+    console.log("DO PATH:", url.pathname);
+    return new Response("Not found", { status: 404 });
   }
   async run() {
     if (this.running) return;
@@ -101,6 +107,68 @@ var ShopifyRateLimiterDO = class {
       }
       return json;
     }
+  }
+  async backfill(payload) {
+    const { shop, accessToken, startDate, endDate, cursor } = payload;
+    const json = await this.handle({
+      shop,
+      accessToken,
+      query: `
+      query ($cursor: String) {
+        orders(
+          first: 50,
+          after: $cursor,
+          query: "created_at:>=${startDate} AND created_at:<=${endDate}"
+        ) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          edges {
+            node {
+              id
+            }
+          }
+        }
+      }
+    `,
+      variables: { cursor: cursor || null }
+    });
+    const edges = json?.data?.orders?.edges || [];
+    const orders = [];
+    for (const edge of edges) {
+      const id = edge.node.id.split("/").pop();
+      let attempt = 0;
+      while (true) {
+        const res = await fetch(
+          `https://${shop}/admin/api/2024-01/orders/${id}.json`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-Shopify-Access-Token": accessToken
+            }
+          }
+        );
+        if (!res.ok) {
+          if (attempt > 5) {
+            throw new Error(`Order fetch failed: ${await res.text()}`);
+          }
+          await sleep(getBackoffDelay(attempt));
+          attempt++;
+          continue;
+        }
+        const data = await res.json();
+        if (data?.order) {
+          orders.push(data.order);
+        }
+        break;
+      }
+    }
+    return {
+      orders,
+      nextCursor: json?.data?.orders?.pageInfo?.endCursor || null,
+      hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage || false
+    };
   }
 };
 export {
