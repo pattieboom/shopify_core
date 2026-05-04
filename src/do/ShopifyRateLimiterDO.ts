@@ -140,12 +140,33 @@ async backfill(payload: any) {
       variables: { cursor }
     });
 
-    const edges = json?.data?.orders?.edges || [];
+const edges = json?.data?.orders?.edges || [];
 
-    console.log("DO BACKFILL PAGE:", edges.length);
+const orders: any[] = [];
 
-    // voorlopig alleen tellen (geen DB logic hier)
-    total += edges.length;
+for (const edge of edges) {
+  const id = edge.node.id.split("/").pop();
+
+  const res = await fetch(
+    `https://${shop}/admin/api/2024-01/orders/${id}.json`,
+    {
+      headers: {
+        "X-Shopify-Access-Token": accessToken
+      }
+    }
+  );
+
+  const orderJson = await res.json();
+  if (orderJson.order) {
+    orders.push(orderJson.order);
+  }
+}
+
+return {
+  orders,
+  nextCursor: json?.data?.orders?.pageInfo?.endCursor,
+  hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage
+};
 
     if (!json?.data?.orders?.pageInfo?.hasNextPage) break;
 
