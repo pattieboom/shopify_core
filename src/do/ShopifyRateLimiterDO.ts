@@ -27,7 +27,7 @@ async fetch(req: Request): Promise<Response> {
     });
   }
 
-  if (url.pathname === "/backfill") {
+  if (url.pathname.endsWith("/backfill")) {
     const payload = await req.json();
     const result = await this.backfill(payload);
     return new Response(JSON.stringify(result));
