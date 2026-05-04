@@ -111,6 +111,7 @@ async fetch(req: Request): Promise<Response> {
 async backfill(payload: any) {
   const { shop, accessToken, startDate, endDate, cursor } = payload;
 
+  // 1. haal orders via rate-limited GraphQL
   const json = await this.handle({
     shop,
     accessToken,
@@ -139,29 +140,48 @@ async backfill(payload: any) {
   const edges = json?.data?.orders?.edges || [];
   const orders: any[] = [];
 
+  // 2. haal order details (MET retry + check)
   for (const edge of edges) {
     const id = edge.node.id.split("/").pop();
 
-    const res = await fetch(
-      `https://${shop}/admin/api/2024-01/orders/${id}.json`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": accessToken
-        }
-      }
-    );
+    let attempt = 0;
 
-    const orderJson = await res.json();
-    if (orderJson.order) {
-      orders.push(orderJson.order);
+    while (true) {
+      const res = await fetch(
+        `https://${shop}/admin/api/2024-01/orders/${id}.json`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken
+          }
+        }
+      );
+
+      // 🔥 FIX: GEEN blind .json()
+      if (!res.ok) {
+        if (attempt > 5) {
+          throw new Error(`Order fetch failed: ${await res.text()}`);
+        }
+
+        await sleep(getBackoffDelay(attempt));
+        attempt++;
+        continue;
+      }
+
+      const data = await res.json();
+
+      if (data?.order) {
+        orders.push(data.order);
+      }
+
+      break;
     }
   }
 
   return {
     orders,
-    nextCursor: json?.data?.orders?.pageInfo?.endCursor,
-    hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage
+    nextCursor: json?.data?.orders?.pageInfo?.endCursor || null,
+    hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage || false
   };
 }
-
 }
