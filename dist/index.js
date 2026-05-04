@@ -36,6 +36,8 @@ var ShopifyRateLimiterDO = class {
   restoreRate = 50;
   async fetch(req) {
     const url = new URL(req.url);
+    console.log("DO URL:", req.url);
+    console.log("DO PATH:", url.pathname);
     if (url.pathname === "/graphql") {
       const payload = await req.json();
       return new Promise((resolve, reject) => {
