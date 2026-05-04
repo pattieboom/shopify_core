@@ -109,71 +109,59 @@ async fetch(req: Request): Promise<Response> {
     }
   }
 async backfill(payload: any) {
-  const { shop, accessToken, startDate, endDate } = payload;
+  const { shop, accessToken, startDate, endDate, cursor } = payload;
 
-  let cursor: string | null = null;
-  let total = 0;
-
-  while (true) {
-    const json = await this.handle({
-      shop,
-      accessToken,
-      query: `
-        query ($cursor: String) {
-          orders(
-            first: 50,
-            after: $cursor,
-            query: "created_at:>=${startDate} AND created_at:<=${endDate}"
-          ) {
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-            edges {
-              node {
-                id
-              }
+  const json = await this.handle({
+    shop,
+    accessToken,
+    query: `
+      query ($cursor: String) {
+        orders(
+          first: 50,
+          after: $cursor,
+          query: "created_at:>=${startDate} AND created_at:<=${endDate}"
+        ) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          edges {
+            node {
+              id
             }
           }
         }
-      `,
-      variables: { cursor }
-    });
-
-const edges = json?.data?.orders?.edges || [];
-
-const orders: any[] = [];
-
-for (const edge of edges) {
-  const id = edge.node.id.split("/").pop();
-
-  const res = await fetch(
-    `https://${shop}/admin/api/2024-01/orders/${id}.json`,
-    {
-      headers: {
-        "X-Shopify-Access-Token": accessToken
       }
+    `,
+    variables: { cursor: cursor || null }
+  });
+
+  const edges = json?.data?.orders?.edges || [];
+  const orders: any[] = [];
+
+  for (const edge of edges) {
+    const id = edge.node.id.split("/").pop();
+
+    const res = await fetch(
+      `https://${shop}/admin/api/2024-01/orders/${id}.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": accessToken
+        }
+      }
+    );
+
+    const orderJson = await res.json();
+    if (orderJson.order) {
+      orders.push(orderJson.order);
     }
-  );
-
-  const orderJson = await res.json();
-  if (orderJson.order) {
-    orders.push(orderJson.order);
-  }
-}
-
-return {
-  orders,
-  nextCursor: json?.data?.orders?.pageInfo?.endCursor,
-  hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage
-};
-
-    if (!json?.data?.orders?.pageInfo?.hasNextPage) break;
-
-    cursor = json.data.orders.pageInfo.endCursor;
   }
 
-  return { success: true, total };
+  return {
+    orders,
+    nextCursor: json?.data?.orders?.pageInfo?.endCursor,
+    hasNextPage: json?.data?.orders?.pageInfo?.hasNextPage
+  };
 }
 
 }
