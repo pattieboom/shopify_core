@@ -1,16 +1,20 @@
 {
   "name": "@pattieboom/shopify-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": { "build": "tsup" },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   },
   "publishConfig": {
-  "access": "public"
+    "access": "public"
   }
 }
