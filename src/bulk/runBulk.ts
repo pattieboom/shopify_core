@@ -199,8 +199,8 @@ order.refunds.push(refund);
   continue;
 }
 
-      // REFUND LINE ITEM
-if (obj.__parentId && obj.quantity != null && obj.subtotalSet) {
+// REFUND LINE ITEM
+if (isRefundLineItem(obj)) {
   const refund = refunds.get(obj.__parentId);
   if (!refund) continue;
 
