@@ -8,12 +8,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version patch && npm publish",
-    "release:minor": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version minor && npm publish",
-    "release:major": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version major && npm publish"
+    "clean": "rimraf dist tsup.config.bundled_*.mjs",
+    "build": "npm run clean && tsup",
+    "release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm run build && npm version patch && npm publish",
+    "release:minor": "git add . && git commit -m \"release\" || echo \"no changes\" && npm run build && npm version minor && npm publish",
+    "release:major": "git add . && git commit -m \"release\" || echo \"no changes\" && npm run build && npm version major && npm publish"
   },
   "devDependencies": {
+    "rimraf": "^6.1.3",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   },
