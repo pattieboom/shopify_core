@@ -8,7 +8,10 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+"release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version patch && npm publish",
+    "release:minor": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version minor && npm publish",
+    "release:major": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version major && npm publish"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
