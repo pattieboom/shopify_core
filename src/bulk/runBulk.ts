@@ -208,8 +208,8 @@ function mapOrder(obj: any) {
     current_total_tax: obj.totalTaxSet?.shopMoney?.amount,
     current_total_discounts: "0.00",
     order_number: obj.name
-      ? parseInt(obj.name.replace("#", ""))
-      : null,
+  ? Number(obj.name.replace(/[^0-9]/g, ""))
+  : null,
     email: obj.email,
     shipping_address: {
       country_code: obj.shippingAddress?.countryCode
