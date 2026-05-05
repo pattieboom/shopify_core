@@ -1,6 +1,6 @@
 {
   "name": "@pattieboom/shopify-core",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "tsup",
-"release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version patch && npm publish",
+    "release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version patch && npm publish",
     "release:minor": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version minor && npm publish",
     "release:major": "git add . && git commit -m \"release\" || echo \"no changes\" && npm version major && npm publish"
   },
