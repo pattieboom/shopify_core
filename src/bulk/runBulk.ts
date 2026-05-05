@@ -160,6 +160,10 @@ const refunds = new Map<string, any>();
 
       const obj = JSON.parse(line);
 
+      if (obj.id?.includes("Refund")) {
+    console.log("RAW REFUND LINE:", obj);
+  }
+
       // ORDER
       if (isOrder(obj)) {
         orders.set(obj.id, mapOrder(obj));
