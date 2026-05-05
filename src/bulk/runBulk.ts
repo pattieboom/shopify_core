@@ -196,26 +196,26 @@ order.refunds.push(refund);
 }
 
       // REFUND LINE ITEM
-      if (isRefundLineItem(obj)) {
-        const refund = refunds.get(obj.__parentId);
-        if (!refund) continue;
+if (obj.__parentId && obj.quantity != null && obj.subtotalSet) {
+  const refund = refunds.get(obj.__parentId);
+  if (!refund) continue;
 
-        refund.refund_line_items.push({
-          quantity: obj.quantity,
-          subtotal: obj.subtotalSet?.shopMoney?.amount,
-          total_tax: obj.totalTaxSet?.shopMoney?.amount,
-          line_item_id: obj.lineItem?.id?.split("/").pop(),
-          line_item: {
-            sku: obj.lineItem?.sku,
-            product_id: obj.lineItem?.product?.id?.split("/").pop(),
-            variant_id: obj.lineItem?.variant?.id?.split("/").pop(),
-            title: obj.lineItem?.title,
-            vendor: obj.lineItem?.vendor
-          }
-        });
+  refund.refund_line_items.push({
+    quantity: obj.quantity,
+    subtotal: obj.subtotalSet?.shopMoney?.amount,
+    total_tax: obj.totalTaxSet?.shopMoney?.amount,
+    line_item_id: obj.lineItem?.id?.split("/").pop(),
+    line_item: {
+      sku: obj.lineItem?.sku,
+      product_id: obj.lineItem?.product?.id?.split("/").pop(),
+      variant_id: obj.lineItem?.variant?.id?.split("/").pop(),
+      title: obj.lineItem?.title,
+      vendor: obj.lineItem?.vendor
+    }
+  });
 
-        continue;
-      }
+  continue;
+}
 
     }
   }
