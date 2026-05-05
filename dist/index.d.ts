@@ -29,4 +29,13 @@ declare class ShopifyRateLimiterDO {
     }>;
 }
 
-export { ShopifyRateLimiterDO, createShopifyClient };
+type BulkRunOptions = {
+    shop: string;
+    accessToken: string;
+    query: string;
+    onOrder: (order: any) => Promise<void>;
+    signal?: AbortSignal;
+};
+declare function runBulk({ shop, accessToken, query, onOrder, signal }: BulkRunOptions): Promise<void>;
+
+export { ShopifyRateLimiterDO, createShopifyClient, runBulk };

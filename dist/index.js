@@ -173,7 +173,164 @@ var ShopifyRateLimiterDO = class {
     };
   }
 };
+
+// src/bulk/runBulk.ts
+async function runBulk({
+  shop,
+  accessToken,
+  query,
+  onOrder,
+  signal
+}) {
+  const bulkId = await startBulk(shop, accessToken, query);
+  const url = await waitForBulk(shop, accessToken, bulkId, signal);
+  await processBulkFile(url, onOrder, signal);
+}
+async function startBulk(shop, token, query) {
+  const res = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      query: `
+        mutation {
+          bulkOperationRunQuery(
+            query: """
+            ${query}
+            """
+          ) {
+            bulkOperation { id status }
+            userErrors { message }
+          }
+        }
+      `
+    })
+  });
+  const json = await res.json();
+  if (json?.data?.bulkOperationRunQuery?.userErrors?.length) {
+    throw new Error(
+      "Bulk start failed: " + json.data.bulkOperationRunQuery.userErrors.map((e) => e.message).join(", ")
+    );
+  }
+  return json.data.bulkOperationRunQuery.bulkOperation.id;
+}
+async function waitForBulk(shop, token, bulkId, signal) {
+  while (true) {
+    if (signal?.aborted) throw new Error("Bulk aborted");
+    const res = await fetch(
+      `https://${shop}/admin/api/2024-01/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: `
+            {
+              node(id: "${bulkId}") {
+                ... on BulkOperation {
+                  id
+                  status
+                  url
+                  errorCode
+                }
+              }
+            }
+          `
+        })
+      }
+    );
+    const json = await res.json();
+    const op = json?.data?.node;
+    if (!op) throw new Error("Bulk operation not found");
+    if (op.status === "COMPLETED") {
+      if (!op.url) throw new Error("Bulk completed but no URL");
+      return op.url;
+    }
+    if (op.status === "FAILED") {
+      throw new Error("Bulk failed: " + op.errorCode);
+    }
+    await sleep(2e3);
+  }
+}
+async function processBulkFile(url, onOrder, signal) {
+  const res = await fetch(url);
+  if (!res.ok || !res.body) {
+    throw new Error("Failed to download bulk file");
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const orders = /* @__PURE__ */ new Map();
+  while (true) {
+    if (signal?.aborted) throw new Error("Bulk aborted");
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const obj = JSON.parse(line);
+      if (isOrder(obj)) {
+        orders.set(obj.id, mapOrder(obj));
+        continue;
+      }
+      if (isLineItem(obj)) {
+        const order = orders.get(obj.__parentId);
+        if (!order) continue;
+        order.line_items.push(mapLineItem(obj));
+      }
+    }
+  }
+  for (const order of orders.values()) {
+    await onOrder(order);
+  }
+}
+function isOrder(obj) {
+  return obj.id?.includes("Order") && !obj.__parentId;
+}
+function isLineItem(obj) {
+  return obj.__parentId && obj.id?.includes("LineItem");
+}
+function mapOrder(obj) {
+  return {
+    id: obj.id.split("/").pop(),
+    created_at: obj.createdAt,
+    currency: obj.totalPriceSet?.shopMoney?.currencyCode,
+    current_total_price: obj.totalPriceSet?.shopMoney?.amount,
+    current_total_tax: obj.totalTaxSet?.shopMoney?.amount,
+    current_total_discounts: "0.00",
+    order_number: obj.name ? parseInt(obj.name.replace("#", "")) : null,
+    email: obj.email,
+    shipping_address: {
+      country_code: obj.shippingAddress?.countryCode
+    },
+    billing_address: {
+      country_code: obj.billingAddress?.countryCode
+    },
+    line_items: []
+  };
+}
+function mapLineItem(obj) {
+  return {
+    id: obj.id.split("/").pop(),
+    sku: obj.sku,
+    quantity: obj.quantity,
+    price: obj.originalUnitPriceSet?.shopMoney?.amount,
+    product_id: obj.product?.id?.split("/").pop(),
+    variant_id: obj.variant?.id?.split("/").pop(),
+    title: obj.title,
+    vendor: obj.vendor,
+    product_type: obj.product?.productType,
+    tax_lines: []
+  };
+}
 export {
   ShopifyRateLimiterDO,
-  createShopifyClient
+  createShopifyClient,
+  runBulk
 };
