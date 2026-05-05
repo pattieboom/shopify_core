@@ -299,6 +299,7 @@ function isLineItem(obj) {
 function mapOrder(obj) {
   return {
     id: obj.id.split("/").pop(),
+    name: obj.name,
     created_at: obj.createdAt,
     currency: obj.totalPriceSet?.shopMoney?.currencyCode,
     current_total_price: obj.totalPriceSet?.shopMoney?.amount,
