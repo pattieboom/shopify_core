@@ -142,6 +142,7 @@ async function processBulkFile(
 
   let buffer = "";
   const orders = new Map<string, any>();
+const refunds = new Map<string, any>();
 
   while (true) {
     if (signal?.aborted) throw new Error("Bulk aborted");
@@ -181,13 +182,40 @@ if (isRefund(obj)) {
 
   if (!order.refunds) order.refunds = [];
 
-  order.refunds.push({
-    id: obj.id,
-    createdAt: obj.createdAt
-  });
+const refund = {
+  id: obj.id.split("/").pop(),
+  createdAt: obj.createdAt,
+  refund_line_items: []
+};
+
+refunds.set(obj.id, refund);
+
+order.refunds.push(refund);
 
   continue;
 }
+
+      // REFUND LINE ITEM
+      if (isRefundLineItem(obj)) {
+        const refund = refunds.get(obj.__parentId);
+        if (!refund) continue;
+
+        refund.refund_line_items.push({
+          quantity: obj.quantity,
+          subtotal: obj.subtotalSet?.shopMoney?.amount,
+          total_tax: obj.totalTaxSet?.shopMoney?.amount,
+          line_item_id: obj.lineItem?.id?.split("/").pop(),
+          line_item: {
+            sku: obj.lineItem?.sku,
+            product_id: obj.lineItem?.product?.id?.split("/").pop(),
+            variant_id: obj.lineItem?.variant?.id?.split("/").pop(),
+            title: obj.lineItem?.title,
+            vendor: obj.lineItem?.vendor
+          }
+        });
+
+        continue;
+      }
 
     }
   }
@@ -214,6 +242,9 @@ function isRefund(obj: any) {
   return obj.__parentId && obj.id?.includes("Refund");
 }
 
+function isRefundLineItem(obj: any) {
+  return obj.__parentId && obj.id?.includes("RefundLineItem");
+}
 // =========================
 // MAPPERS (Webhook compatible)
 // =========================
