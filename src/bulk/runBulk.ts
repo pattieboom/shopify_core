@@ -198,6 +198,7 @@ function isLineItem(obj: any) {
 // =========================
 
 function mapOrder(obj: any) {
+  console.log("MAP ORDER INPUT:", obj);
   return {
     id: obj.id.split("/").pop(),
     name: obj.name,
