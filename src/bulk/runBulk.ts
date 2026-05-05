@@ -156,6 +156,7 @@ const refunds = new Map<string, any>();
     buffer = lines.pop() || "";
 
     for (const line of lines) {
+      console.log("RAW LINE:", line);
       if (!line.trim()) continue;
 
       const obj = JSON.parse(line);
