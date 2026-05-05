@@ -166,12 +166,29 @@ async function processBulkFile(
       }
 
       // LINE ITEM
-      if (isLineItem(obj)) {
-        const order = orders.get(obj.__parentId);
-        if (!order) continue;
+if (isLineItem(obj)) {
+  const order = orders.get(obj.__parentId);
+  if (!order) continue;
 
-        order.line_items.push(mapLineItem(obj));
-      }
+  order.line_items.push(mapLineItem(obj));
+  continue;
+}
+
+// REFUND (alleen ID + createdAt)
+if (isRefund(obj)) {
+  const order = orders.get(obj.__parentId);
+  if (!order) continue;
+
+  if (!order.refunds) order.refunds = [];
+
+  order.refunds.push({
+    id: obj.id,
+    createdAt: obj.createdAt
+  });
+
+  continue;
+}
+
     }
   }
 
@@ -191,6 +208,10 @@ function isOrder(obj: any) {
 
 function isLineItem(obj: any) {
   return obj.__parentId && obj.id?.includes("LineItem");
+}
+
+function isRefund(obj: any) {
+  return obj.__parentId && obj.id?.includes("Refund");
 }
 
 // =========================
@@ -217,7 +238,8 @@ function mapOrder(obj: any) {
     billing_address: {
       country_code: obj.billingAddress?.countryCode
     },
-    line_items: []
+    line_items: [],
+    refunds: []
   };
 }
 
