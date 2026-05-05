@@ -276,6 +276,9 @@ async function processBulkFile(url, onOrder, signal) {
     for (const line of lines) {
       if (!line.trim()) continue;
       const obj = JSON.parse(line);
+      if (obj.id?.includes("Refund")) {
+        console.log("RAW REFUND LINE:", obj);
+      }
       if (isOrder(obj)) {
         orders.set(obj.id, mapOrder(obj));
         continue;
@@ -299,7 +302,7 @@ async function processBulkFile(url, onOrder, signal) {
         order.refunds.push(refund);
         continue;
       }
-      if (isRefundLineItem(obj)) {
+      if (obj.__parentId && obj.quantity != null && obj.subtotalSet) {
         const refund = refunds.get(obj.__parentId);
         if (!refund) continue;
         refund.refund_line_items.push({
@@ -331,9 +334,6 @@ function isLineItem(obj) {
 }
 function isRefund(obj) {
   return obj.__parentId && obj.id?.includes("Refund");
-}
-function isRefundLineItem(obj) {
-  return obj.__parentId && obj.id?.includes("RefundLineItem");
 }
 function mapOrder(obj) {
   console.log("MAP ORDER INPUT:", obj);

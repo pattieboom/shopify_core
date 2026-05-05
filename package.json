@@ -8,7 +8,7 @@
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist tsup.config.bundled_*.mjs",
+    "clean": "rimraf dist",
     "build": "npm run clean && tsup",
     "release:patch": "git add . && git commit -m \"release\" || echo \"no changes\" && npm run build && npm version patch && npm publish",
     "release:minor": "git add . && git commit -m \"release\" || echo \"no changes\" && npm run build && npm version minor && npm publish",
