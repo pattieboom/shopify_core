@@ -265,6 +265,7 @@ async function processBulkFile(url, onOrder, signal) {
   const decoder = new TextDecoder();
   let buffer = "";
   const orders = /* @__PURE__ */ new Map();
+  const refunds = /* @__PURE__ */ new Map();
   while (true) {
     if (signal?.aborted) throw new Error("Bulk aborted");
     const { done, value } = await reader.read();
@@ -283,6 +284,38 @@ async function processBulkFile(url, onOrder, signal) {
         const order = orders.get(obj.__parentId);
         if (!order) continue;
         order.line_items.push(mapLineItem(obj));
+        continue;
+      }
+      if (isRefund(obj)) {
+        const order = orders.get(obj.__parentId);
+        if (!order) continue;
+        if (!order.refunds) order.refunds = [];
+        const refund = {
+          id: obj.id.split("/").pop(),
+          createdAt: obj.createdAt,
+          refund_line_items: []
+        };
+        refunds.set(obj.id, refund);
+        order.refunds.push(refund);
+        continue;
+      }
+      if (isRefundLineItem(obj)) {
+        const refund = refunds.get(obj.__parentId);
+        if (!refund) continue;
+        refund.refund_line_items.push({
+          quantity: obj.quantity,
+          subtotal: obj.subtotalSet?.shopMoney?.amount,
+          total_tax: obj.totalTaxSet?.shopMoney?.amount,
+          line_item_id: obj.lineItem?.id?.split("/").pop(),
+          line_item: {
+            sku: obj.lineItem?.sku,
+            product_id: obj.lineItem?.product?.id?.split("/").pop(),
+            variant_id: obj.lineItem?.variant?.id?.split("/").pop(),
+            title: obj.lineItem?.title,
+            vendor: obj.lineItem?.vendor
+          }
+        });
+        continue;
       }
     }
   }
@@ -295,6 +328,12 @@ function isOrder(obj) {
 }
 function isLineItem(obj) {
   return obj.__parentId && obj.id?.includes("LineItem");
+}
+function isRefund(obj) {
+  return obj.__parentId && obj.id?.includes("Refund");
+}
+function isRefundLineItem(obj) {
+  return obj.__parentId && obj.id?.includes("RefundLineItem");
 }
 function mapOrder(obj) {
   console.log("MAP ORDER INPUT:", obj);
@@ -314,7 +353,8 @@ function mapOrder(obj) {
     billing_address: {
       country_code: obj.billingAddress?.countryCode
     },
-    line_items: []
+    line_items: [],
+    refunds: []
   };
 }
 function mapLineItem(obj) {
