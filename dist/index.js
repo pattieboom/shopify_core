@@ -297,6 +297,7 @@ function isLineItem(obj) {
   return obj.__parentId && obj.id?.includes("LineItem");
 }
 function mapOrder(obj) {
+  console.log("MAP ORDER INPUT:", obj);
   return {
     id: obj.id.split("/").pop(),
     name: obj.name,
