@@ -21,5 +21,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@shopify/admin-api-client": "^1.1.2"
   }
 }

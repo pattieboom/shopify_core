@@ -14,6 +14,9 @@ function createShopifyClient(env, app) {
   };
 }
 
+// src/do/ShopifyRateLimiterDO.ts
+import { createAdminApiClient } from "@shopify/admin-api-client";
+
 // src/utils/sleep.ts
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -24,9 +27,6 @@ var calculateWaitTime = (avail, rate, query) => {
   if (avail >= cost) return 0;
   return (cost - avail) / rate * 1e3;
 };
-
-// src/utils/retry.ts
-var getBackoffDelay = (a) => Math.min(1e3 * 2 ** a, 5e3);
 
 // src/do/ShopifyRateLimiterDO.ts
 var ShopifyRateLimiterDO = class {
@@ -79,33 +79,19 @@ var ShopifyRateLimiterDO = class {
       if (wait > 0) {
         await sleep(wait);
       }
-      const res = await fetch(
-        `https://${payload.shop}/admin/api/2024-10/graphql.json`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": payload.accessToken
-          },
-          body: JSON.stringify({
-            query: payload.query,
-            variables: payload.variables
-          })
-        }
-      );
-      const json = await res.json();
+      const client = createAdminApiClient({
+        storeDomain: `https://${payload.shop}`,
+        accessToken: payload.accessToken,
+        apiVersion: "2025-01"
+      });
+      const json = await client.request(payload.query, {
+        variables: payload.variables
+      });
+      console.log("SHOPIFY CLIENT RESPONSE:", json);
       const cost = json?.extensions?.cost;
       if (cost) {
         this.currentlyAvailable = cost.throttleStatus.currentlyAvailable;
         this.restoreRate = cost.throttleStatus.restoreRate;
-      }
-      if (!res.ok) {
-        if (attempt > 5) {
-          throw new Error("Max retries reached");
-        }
-        await sleep(getBackoffDelay(attempt));
-        attempt++;
-        continue;
       }
       return json;
     }
@@ -151,14 +137,6 @@ var ShopifyRateLimiterDO = class {
             }
           }
         );
-        if (!res.ok) {
-          if (attempt > 5) {
-            throw new Error(`Order fetch failed: ${await res.text()}`);
-          }
-          await sleep(getBackoffDelay(attempt));
-          attempt++;
-          continue;
-        }
         const data = await res.json();
         if (data?.order) {
           orders.push(data.order);
@@ -274,6 +252,7 @@ async function processBulkFile(url, onOrder, signal) {
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
     for (const line of lines) {
+      console.log("RAW LINE:", line);
       if (!line.trim()) continue;
       const obj = JSON.parse(line);
       if (obj.id?.includes("Refund")) {

@@ -1,3 +1,5 @@
+import * as _shopify_graphql_client from '@shopify/graphql-client';
+
 type ShopifyGraphQLRequest = {
     shop: string;
     accessToken: string;
@@ -21,7 +23,7 @@ declare class ShopifyRateLimiterDO {
     restoreRate: number;
     fetch(req: Request): Promise<Response>;
     run(): Promise<void>;
-    handle(payload: any): Promise<any>;
+    handle(payload: any): Promise<_shopify_graphql_client.ClientResponse<any>>;
     backfill(payload: any): Promise<{
         orders: any[];
         nextCursor: any;

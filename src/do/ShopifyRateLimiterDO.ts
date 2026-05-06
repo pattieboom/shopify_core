@@ -1,3 +1,4 @@
+import { createAdminApiClient } from "@shopify/admin-api-client";
 import { sleep } from "../utils/sleep";
 import { calculateWaitTime } from "../utils/rateLimit";
 import { getBackoffDelay } from "../utils/retry";
@@ -71,22 +72,17 @@ console.log("DO PATH:", url.pathname);
         await sleep(wait);
       }
 
-      const res = await fetch(
-        `https://${payload.shop}/admin/api/2024-10/graphql.json`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": payload.accessToken,
-          },
-          body: JSON.stringify({
-            query: payload.query,
-            variables: payload.variables,
-          }),
-        }
-      );
+const client = createAdminApiClient({
+  storeDomain: `https://${payload.shop}`,
+  accessToken: payload.accessToken,
+  apiVersion: "2025-01",
+});
 
-      const json = await res.json();
+const json = await client.request(payload.query, {
+  variables: payload.variables,
+});
+
+console.log("SHOPIFY CLIENT RESPONSE:", json);
 
       // update rate limit
       const cost = json?.extensions?.cost;
@@ -95,7 +91,7 @@ console.log("DO PATH:", url.pathname);
           cost.throttleStatus.currentlyAvailable;
         this.restoreRate = cost.throttleStatus.restoreRate;
       }
-
+/*
       // retry on network / 5xx
       if (!res.ok) {
         if (attempt > 5) {
@@ -106,6 +102,7 @@ console.log("DO PATH:", url.pathname);
         attempt++;
         continue;
       }
+*/
 
       return json;
     }
@@ -160,7 +157,8 @@ async backfill(payload: any) {
       );
 
       // 🔥 FIX: GEEN blind .json()
-      if (!res.ok) {
+/*      
+if (!res.ok) {
         if (attempt > 5) {
           throw new Error(`Order fetch failed: ${await res.text()}`);
         }
@@ -169,7 +167,7 @@ async backfill(payload: any) {
         attempt++;
         continue;
       }
-
+*/
       const data = await res.json();
 
       if (data?.order) {
